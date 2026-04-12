@@ -152,6 +152,17 @@ Prompt: "Search X for all recent posts and retweets from @burstingbagel, @Cbb0fe
 
 > **To add more accounts to this list:** append handles to the Accounts line above and to the `allowed_x_handles` array in the API call. Keep under 10 handles per query.
 
+### Query 14 — AI Future (Frontier Models & AI x Crypto)
+
+Frontier AI labs, researchers, and thinkers covering model releases, AGI timelines, AI safety, and AI x crypto intersections. No topic filter — capture everything they post.
+
+```
+Accounts: AnthropicAI
+Prompt: "Search X for all recent posts and retweets from @AnthropicAI. List all posts and retweets from the last 24 hours with tweet URLs and dates. These are frontier AI lab updates — highlight any model releases, capability announcements, safety research, policy positions, or commentary on AI x crypto intersections."
+```
+
+> **To add more accounts to this list:** append handles to the Accounts line above and to the `allowed_x_handles` array in the API call. Keep under 10 handles per query.
+
 > **Design notes:**
 > - Query 0 captures the 10 highest-signal individuals (no topic filter) — their threads/takes get sorted into sections during assembly
 > - samczsun and zachxbt are in Query 0 (global), NOT in Security query — their signal spans all topics
@@ -162,6 +173,7 @@ Prompt: "Search X for all recent posts and retweets from @burstingbagel, @Cbb0fe
 > - balajis + masonnystrom + CamiRusso in Macro for strategic synthesis
 > - VC split into 2 queries (10-handle limit): Tier 1 (a16z/Dragonfly/Paradigm) + Tier 2 (Electric/Variant/Placeholder/independent)
 > - Query 12 (Hidden Gems) is a personal watchlist of sophisticated low-profile analysts — no topic filter, outputs are sorted into relevant sections during assembly OR surfaced in a dedicated "Hidden Gems" section if their signal doesn't fit neatly elsewhere
+> - Query 14 (AI Future) covers frontier AI labs (@AnthropicAI + future additions) — model releases, AGI timelines, safety research, AI x crypto intersections. Outputs surfaced in dedicated Section 16 (AI Future)
 
 ### API Call Pattern
 
@@ -182,7 +194,7 @@ curl -s -X POST https://api.x.ai/v1/responses \
   }'
 ```
 
-Run ALL 14 queries in parallel (separate Bash calls).
+Run ALL 15 queries in parallel (separate Bash calls).
 
 ### Response Parsing
 
@@ -241,6 +253,7 @@ Fill gaps that X doesn't cover well:
 13. **Hidden Gems** — Noteworthy posts from @CharlieStLouis, @ivangbi_, @kassandraETH, @gametheorizing, @thiccyth0t, @antonttc. Show what they posted that's smart/insightful. Skip if nothing substantive. No need to force items.
 14. **Whales & Farmers** — What @burstingbagel, @Cbb0fe, @PendleIntern, @phtevenstrong, @JustDeauIt are doing/saying. Yield strategies, position moves, protocol alpha, market observations. Skip if nothing substantive.
 15. **Product Implications** — Roadmap impact, competitor moves, what to test/avoid, open questions
+16. **AI Future** — Frontier model releases, AGI timelines, AI safety developments, AI x crypto intersections. Sources: @AnthropicAI + future frontier AI accounts. Skip if nothing substantive.
 
 ### Per-Item Template
 
