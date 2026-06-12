@@ -77,7 +77,7 @@ Topic: "chain updates, launches, ecosystem news, new features"
 ### Query 4 — AI / Agents
 
 ```
-Accounts: virtuals_io, autonolas, wayfinder_ai, ai16zdao, elizaOS
+Accounts: virtuals_io, autonolas, wayfinder_ai, ai16zdao, elizaOS, AnthropicAI, polsia, AskVenice
 Topic: "crypto AI agents onchain autonomous agents agent wallets agent infrastructure developer primitives"
 ```
 
@@ -330,6 +330,27 @@ open -a "Visual Studio Code" "$REPORT_PATH"
 
 ---
 
+## Phase 6: Publish to GitHub Pages
+
+After saving, publish all reports to the mobile-readable GitHub Pages site so
+Mattia can read the new report from his phone. This copies every report from
+the vault into the site repo, regenerates the manifest, and pushes — but only
+commits when something actually changed (safe to run every time).
+
+```bash
+PUBLISH="$HOME/Documents/crypto-reports-site/publish.sh"
+if [ -x "$PUBLISH" ]; then
+  "$PUBLISH"
+else
+  echo "WARN: publish script not found at $PUBLISH — skipping site publish."
+fi
+```
+
+**Live site:** https://bearlusconi-bera.github.io/crypto-reports/
+(GitHub Pages redeploys automatically within ~1-2 minutes of the push.)
+
+---
+
 ## Verification Checklist
 
 Before declaring done:
@@ -341,3 +362,4 @@ Before declaring done:
 - [ ] Links are real (from GrokSearch citations + news sites)
 - [ ] Report saved to correct path
 - [ ] Total cost reported in footer
+- [ ] Report published to GitHub Pages (Phase 6 ran, push succeeded)
