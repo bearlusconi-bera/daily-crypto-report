@@ -459,7 +459,7 @@ Within the week, merge a story that developed over several days into one item (l
 
 ### Thin-Signal Handling (quiet weeks & holidays)
 
-If fewer than 16 unique new items survive cross-week dedup:
+If fewer than 32 unique new items survive cross-week dedup:
 - Produce a shorter **"Low Activity Edition"** header: `# Weekly Crypto Market Report — [DATE] (Low Activity Edition)`
 - Reduce the Top 10 to however many genuinely new items exist (could be 2-6)
 - Skip sections entirely rather than filling with stale content
@@ -468,7 +468,7 @@ If fewer than 16 unique new items survive cross-week dedup:
 ### Assembly Rules
 
 - **Skip empty sections** — no padding
-- **Target:** 20-30 items total (double the old daily 10-15), 6-10 must-know in the Top 10
+- **Target:** 40-60 items total (was 10-15 in the old daily report), 6-10 must-know in the Top 10. Section caps of up to 10 items are ceilings: fill a section only with distinct, material items from the week, and never pad.
 - **Section caps (up to 10 items per section in the weekly report).** Caps are ceilings, not quotas: fill them only with distinct, material items from the week, and never pad.
 
   | Section | Old daily | Weekly cap |
