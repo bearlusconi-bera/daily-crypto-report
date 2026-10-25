@@ -1,6 +1,6 @@
 ---
 name: DailyCryptoReport
-description: Generate a daily crypto market intelligence report for a product lead. Searches X/Twitter via GrokSearch API + curated news sites + web search, assembles into a structured 12-section report optimized for 60-second scanning. USE WHEN daily report, daily crypto report, crypto report, market report, morning report, generate report, run report, what happened in crypto, crypto news today, daily briefing, market briefing, crypto briefing.
+description: Generate the weekly crypto market intelligence report for a product lead, run every Saturday at 11:00 (Europe/Paris) and covering the previous 7 days. Searches X/Twitter via GrokSearch API + curated news sites + web search, assembles into a structured report with a Top 10 of the week, optimized for 2-minute scanning. USE WHEN weekly report, weekly crypto report, daily report, daily crypto report, crypto report, market report, generate report, run report, what happened in crypto this week, crypto news this week, weekly briefing, market briefing, crypto briefing.
 ---
 
 ## Customization
@@ -15,20 +15,33 @@ If this directory exists, load and apply any PREFERENCES.md, configurations, or 
 ```bash
 curl -s -X POST http://localhost:8888/notify \
   -H "Content-Type: application/json" \
-  -d '{"message": "Generating daily crypto market report", "voice_enabled": true}' \
+  -d '{"message": "Generating weekly crypto market report", "voice_enabled": true}' \
   > /dev/null 2>&1 &
 ```
 
-Output: `Generating daily crypto market **report**...`
+Output: `Generating weekly crypto market **report**...`
 
 ---
 
-# Daily Crypto Market Report — Generation Skill
+# Weekly Crypto Market Report — Generation Skill
+
+> The skill keeps its `DailyCryptoReport` name so existing invocations and the scheduled task keep working, but since 2026-10-31 it produces a **weekly** report.
+
+## Schedule and reporting window
+
+- **Runs once a week: Saturday at 11:00 Europe/Paris.** There is no daily run. Cron: `0 11 * * 6` (machine time zone Europe/Paris); launchd: `StartCalendarInterval` `Weekday=6`, `Hour=11`, `Minute=0`. The scheduled task is `~/.claude/scheduled-tasks/daily-crypto-report/`.
+- **Window: the previous 7 days.** `FROM_DATE` = run date − 7 days (the previous Saturday), `TO_DATE` = run date. Every source (X queries, news sites, podcasts, research, web searches, market snapshot) uses this same 7-day window:
+  ```bash
+  FROM_DATE=$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d "7 days ago" +%Y-%m-%d)
+  TO_DATE=$(date +%Y-%m-%d)
+  ```
+- **File name:** the run date, `YYYY-MM-DD.md` (normally a Saturday). A manual run on another day still covers the 7 days before that run.
+- **Volume:** up to 10 items per section, up from about 3 in the old daily report (see "Section caps" under Assembly Rules), with a Top 10 instead of a Top 5.
 
 ## Overview
 
-Generates a daily crypto market intelligence report optimized for a product lead:
-- Scannable in 60 seconds (Top 5 section)
+Generates a weekly crypto market intelligence report optimized for a product lead:
+- Scannable in 2 minutes (Top 10 of the week)
 - Deep enough to inform roadmap decisions (Product Implications)
 - Sourced from X/Twitter (GrokSearch) + curated news sites + web search
 
@@ -52,9 +65,10 @@ All content fetched in Phases 1-2 (X/Twitter posts via GrokSearch, news-site pag
 
 **Preflight:** Run `set -a; [ -f "$HOME/.claude/.env" ] && . "$HOME/.claude/.env"; set +a`, then verify `$XAI_API_KEY` is set. If missing, STOP and tell user.
 
-**Time range:** 1 day (last 24h)
+**Time range:** 7 days (the previous 7 days: `FROM_DATE` = run date − 7 days, `TO_DATE` = run date) for **every** query
 **Model:** `grok-4-1-fast`
 **IMPORTANT:** Every query prompt MUST request "posts AND retweets" to capture amplified signal.
+**Weekly prompts:** every prompt (including the Topic-only queries, whose prompt you build from the handles and topic) MUST say "in the last 7 days" and ask for **the most significant posts and retweets of the week per account** — threads, announcements, data and high-engagement posts first; skip short replies and routine chatter. A week returns far more posts than a day, so ranking at the source keeps the material usable.
 
 ### Query 0 — Top 10 High-Signal Individuals (Profiles only, no topic filter)
 
@@ -62,7 +76,7 @@ The highest signal-to-noise accounts in crypto. Original analysis, thread-heavy,
 
 ```
 Accounts: VitalikButerin, zachxbt, sassal0x, samczsun, hasufl, DefiIgnas, haydenzadams, aeyakovenko, 0xfoobar, iamDCinvestor
-Prompt: "Search X for all recent posts and retweets from @VitalikButerin, @zachxbt, @sassal0x, @samczsun, @hasufl, @DefiIgnas, @haydenzadams, @aeyakovenko, @0xfoobar, and @iamDCinvestor. For each account, list their key posts AND retweets from the last 24 hours with the specific tweet URL and date. Highlight any long threads or deep analysis pieces."
+Prompt: "Search X for all recent posts and retweets from @VitalikButerin, @zachxbt, @sassal0x, @samczsun, @hasufl, @DefiIgnas, @haydenzadams, @aeyakovenko, @0xfoobar, and @iamDCinvestor. For each account, list their most significant posts AND retweets from the last 7 days with the specific tweet URL and date. Highlight any long threads or deep analysis pieces."
 ```
 
 ### Query 1 — Ethereum (protocol accounts + analysts)
@@ -94,7 +108,7 @@ Focused on three AI players: **NEAR AI** (decentralized/user-owned AI, agent vis
 
 ```
 Accounts: near_ai, ILBlackDragon, AskVenice, ErikVoorhees, arena
-Prompt: "Search X for all recent posts and retweets from @near_ai, @ILBlackDragon, @AskVenice, @ErikVoorhees, and @arena in the last 24 hours. Focus on NEAR AI (decentralized/agentic AI, NEAR AI roadmap, user-owned AI), Venice AI (private/uncensored AI, $VVV token, product launches, positioning vs OpenAI/Anthropic), and Arena.ai (formerly LMArena — model evaluation, leaderboard updates, new model entries, Agent Mode agentic benchmarking, frontier-model comparisons). List each post and retweet with the tweet URL and date. Highlight threads or substantive announcements."
+Prompt: "Search X for all recent posts and retweets from @near_ai, @ILBlackDragon, @AskVenice, @ErikVoorhees, and @arena in the last 7 days. Focus on NEAR AI (decentralized/agentic AI, NEAR AI roadmap, user-owned AI), Venice AI (private/uncensored AI, $VVV token, product launches, positioning vs OpenAI/Anthropic), and Arena.ai (formerly LMArena — model evaluation, leaderboard updates, new model entries, Agent Mode agentic benchmarking, frontier-model comparisons). List each post and retweet with the tweet URL and date. Highlight threads or substantive announcements."
 ```
 > `@arena` = Arena.ai (formerly LMArena; community-driven AI evaluation — leaderboard shifts and new-model entries are the signal). Added 2026-07-12. Keep under 10 handles.
 
@@ -155,7 +169,7 @@ Smart, sophisticated voices that publish deep analysis but don't have massive fo
 
 ```
 Accounts: CharlieStLouis, ivangbi_, kassandraETH, gametheorizing, thiccyth0t, antonttc, ImperiumPaper, borjaneira_
-Prompt: "Search X for all recent posts and retweets from @CharlieStLouis, @ivangbi_, @kassandraETH, @gametheorizing, @thiccyth0t, @antonttc, @ImperiumPaper, and @borjaneira_. List all posts and retweets from the last 24 hours with tweet URLs and dates. These are sophisticated crypto analysts — highlight any threads, research, or in-depth takes."
+Prompt: "Search X for all recent posts and retweets from @CharlieStLouis, @ivangbi_, @kassandraETH, @gametheorizing, @thiccyth0t, @antonttc, @ImperiumPaper, and @borjaneira_. List the most significant posts and retweets from the last 7 days with tweet URLs and dates. These are sophisticated crypto analysts — highlight any threads, research, or in-depth takes."
 ```
 
 > **To add more accounts to this list:** append handles to the Accounts line above and to the `allowed_x_handles` array in the API call. Keep under 10 handles per query.
@@ -166,32 +180,32 @@ Active DeFi farmers, yield hunters, and whale-watchers. No topic filter — capt
 
 ```
 Accounts: burstingbagel, Cbb0fe, PendleIntern, phtevenstrong, JustDeauIt
-Prompt: "Search X for all recent posts and retweets from @burstingbagel, @Cbb0fe, @PendleIntern, @phtevenstrong, and @JustDeauIt. List all posts and retweets from the last 24 hours with tweet URLs and dates. These are active DeFi farmers and whale traders — highlight any yield strategies, position updates, protocol alpha, or market observations."
+Prompt: "Search X for all recent posts and retweets from @burstingbagel, @Cbb0fe, @PendleIntern, @phtevenstrong, and @JustDeauIt. List the most significant posts and retweets from the last 7 days with tweet URLs and dates. These are active DeFi farmers and whale traders — highlight any yield strategies, position updates, protocol alpha, or market observations."
 ```
 
 > **To add more accounts to this list:** append handles to the Accounts line above and to the `allowed_x_handles` array in the API call. Keep under 10 handles per query.
 
 ### Query 14 — General Markets / Macro Research Analysts (X) → feeds §16.2 General Market Research
 
-Macro/markets/thematic research voices on X. **Unlike Queries 0–13, this query uses a 7-DAY window** (`from_date = date -v-7d`), matching the weekly cadence of the §16 Research section — these analysts post reflective research, not 24h news. Output feeds the §16 Research section (not the news sections), split across **§16.1 Crypto Research** and **§16.2 General Market Research** by the subject of each post — see §16 in the Report Structure. No topic filter — capture substantive posts/threads/charts; the assembler picks the few that matter and cross-references them to other report items. Cross-day dedup applies (don't repeat a post surfaced in a prior report).
+Macro/markets/thematic research voices on X. Uses the standard **7-day window** (`from_date = date -v-7d`), like every query in the weekly report — these analysts post reflective research, not breaking news. Output feeds the §16 Research section (not the news sections), split across **§16.1 Crypto Research** and **§16.2 General Market Research** by the subject of each post — see §16 in the Report Structure. No topic filter — capture substantive posts/threads/charts; the assembler picks the ones that matter and cross-references them to other report items. Cross-week dedup applies (don't repeat a post surfaced in the previous report).
 
 ```
 Accounts: citrini, QuantData, charliebilello, LizAnnSonders, MacroAlf, LynAldenContact, RaoulGMI
 Prompt: "Search X for all recent posts and retweets from @citrini, @QuantData, @charliebilello, @LizAnnSonders, @MacroAlf, @LynAldenContact, and @RaoulGMI in the last 7 days. These are macro/markets research strategists (@citrini = thematic/cross-asset research; @QuantData = quant/data-driven markets, options flow, index levels; @charliebilello = historical-context charts, valuations, cycles, Fed policy, 'Week in Charts'; @LizAnnSonders = chart-driven equity analysis, macro trends, sector rotation, economic data; @MacroAlf = institutional global macro frameworks — credit impulse, yield curves, cross-asset positioning; @LynAldenContact = monetary systems, fiscal and debt dynamics, energy, multi-asset structural themes; @RaoulGMI = macro and cross-asset commentary). List substantive posts, threads, and charts with the tweet URL and date — macro, equities, rates, credit, thematic baskets, options/IV, index levels, and data-driven market observations. Flag separately any post whose SUBJECT is crypto or bitcoin rather than general macro. Skip short replies."
 ```
-> Window note for the API call: set `FROM_DATE=$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d "7 days ago" +%Y-%m-%d)` for THIS query and Query 18 only; all other queries keep the 1-day window. Handle `@citrini` is the live account (NOT `@Citrini7`, which does not exist).
+> Window note for the API call: `FROM_DATE=$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d "7 days ago" +%Y-%m-%d)`, the same 7-day window as every other query. Handle `@citrini` is the live account (NOT `@Citrini7`, which does not exist).
 > `@charliebilello` = Charlie Bilello (Chief Market Strategist, Creative Planning). `@LizAnnSonders` = Liz Ann Sonders (Chief Investment Strategist, Charles Schwab). `@MacroAlf` = Alfonso Peccatiello (The Macro Compass). `@LynAldenContact` = Lyn Alden. All four added 2026-08-24 at Mattia's request; **handle casing verified live that day** — capitalisation as written matters. `@MacroAlf` posts in bursts and was silent on the verification run: surface when active, skip silently when quiet. `@RaoulGMI` was added 2026-10-18 at Mattia's request; surface substantive macro and cross-asset research, routing crypto-specific items to §16.1.
-> **Volume warning:** Bilello and Sonders are both high-frequency chart posters — the verification run returned 9–10 substantive posts *each* over 7 days. Do NOT list them post-by-post in §16.2. Compress each into a single grouped entry of the 3–5 charts that carry a thesis, and drop the newsletter/podcast promos and standalone chart drops that make no argument. This query can now easily return 30+ items; §16.2 should still land at a handful.
+> **Volume warning:** Bilello and Sonders are both high-frequency chart posters — the verification run returned 9–10 substantive posts *each* over 7 days. Do NOT list them post-by-post in §16.2. Compress each into a single grouped entry of the 3–5 charts that carry a thesis, and drop the newsletter/podcast promos and standalone chart drops that make no argument. This query can now easily return 30+ items; §16.2 should still land at its weekly cap (up to 10 entries).
 > `@LynAldenContact` is the clearest case for the route-by-content rule: her primary lens is macro, so she lives in this query, but her Bitcoin and monetary-debasement pieces belong in **§16.1**. Route each post by its subject, not by which query surfaced it.
 > **To add more research analysts:** append handles here and to the `allowed_x_handles` array. Keep under 10 handles (currently 7).
 
 ### Query 15 — Institutions / TradFi (X) → feeds §7 Institutions/TradFi
 
-Institutional/TradFi voices on X (the asset managers, banks, and institutional desks entering crypto). Standard **1-day window** (this is news/signal, like §6, not reflective research).
+Institutional/TradFi voices on X (the asset managers, banks, and institutional desks entering crypto). Standard **7-day window**, like every query in the weekly report (this is news/signal, like §6, not reflective research).
 
 ```
 Accounts: DigitalAssets, Anchorage, payward, AlpacaHQ
-Prompt: "Search X for all recent posts and retweets from @DigitalAssets (Fidelity Digital Assets), @Anchorage (Anchorage Digital), @payward (Kraken), and @AlpacaHQ (Alpaca) in the last 24 hours. List each substantive post with tweet URL and date — institutional crypto research, tokenization, Bitcoin fundamentals, custody, ETF/product news, TradFi-to-crypto adoption signals, exchange product launches, brokerage-as-a-service infrastructure, and regulatory developments. Highlight reports and threads."
+Prompt: "Search X for all recent posts and retweets from @DigitalAssets (Fidelity Digital Assets), @Anchorage (Anchorage Digital), @payward (Kraken), and @AlpacaHQ (Alpaca) in the last 7 days. List the most significant posts of the week with tweet URL and date — institutional crypto research, tokenization, Bitcoin fundamentals, custody, ETF/product news, TradFi-to-crypto adoption signals, exchange product launches, brokerage-as-a-service infrastructure, and regulatory developments. Highlight reports and threads."
 ```
 > **Institutional custody & research:** `@DigitalAssets` = **Fidelity Digital Assets** (Fidelity's institutional crypto arm). `@Anchorage` = **Anchorage Digital** (federally chartered crypto bank; institutional custody, staking, governance, and trading).
 > **Digital asset providers:** `@payward` = **Kraken** (Payward Inc. — major crypto exchange; institutional products, regulatory updates, new listings, and exchange infrastructure). `@AlpacaHQ` = **Alpaca** (brokerage-as-a-service API for stocks and crypto; trading infrastructure for fintechs and developers). Both added 2026-09-18.
@@ -203,7 +217,7 @@ Dedicated tracking of Robinhood's crypto/chain ecosystem. Covers the Robinhood C
 
 ```
 Accounts: JohannKerbrat, vladtenev, RobinhoodCrypto
-Prompt: "Search X for all recent posts and retweets from @JohannKerbrat (VP of Crypto, Robinhood), @vladtenev (CEO, Robinhood), and @RobinhoodCrypto in the last 24 hours. List each post and retweet with the tweet URL and date. Cover Robinhood Chain, tokenized stocks, USDG, perps, crypto strategy, ecosystem partnerships, and any product announcements. Highlight threads or substantive posts."
+Prompt: "Search X for all recent posts and retweets from @JohannKerbrat (VP of Crypto, Robinhood), @vladtenev (CEO, Robinhood), and @RobinhoodCrypto in the last 7 days. List the most significant posts and retweets of the week with the tweet URL and date. Cover Robinhood Chain, tokenized stocks, USDG, perps, crypto strategy, ecosystem partnerships, and any product announcements. Highlight threads or substantive posts."
 ```
 > `@JohannKerbrat` = Johann Kerbrat (VP of Crypto at Robinhood; leads Robinhood Chain, crypto products). `@vladtenev` = Vlad Tenev (CEO, Robinhood; posts about chain strategy, product vision). `@RobinhoodCrypto` = official Robinhood crypto/chain account. Keep under 10 handles.
 
@@ -213,14 +227,14 @@ Startup/product voices for Mattia's PM lens. No topic filter — capture everyth
 
 ```
 Accounts: garrytan, nikitabier, TimHaldorsson, gregisenberg
-Prompt: "Search X for all recent posts and retweets from @garrytan, @nikitabier, @TimHaldorsson, and @gregisenberg in the last 24 hours. List each post and retweet with the tweet URL and date. These are startup/product ecosystem voices (@garrytan = President & CEO of Y Combinator; @nikitabier = consumer product builder and growth expert; @TimHaldorsson = crypto marketing/activation campaigns and podcast host; @gregisenberg = startup founder and product/growth voice). Cover startup strategy, product-building insight, consumer app trends, YC ecosystem news, hiring/talent takes, AI-product commentary, and crypto activation campaigns or podcast appearances. Highlight threads or substantive takes."
+Prompt: "Search X for all recent posts and retweets from @garrytan, @nikitabier, @TimHaldorsson, and @gregisenberg in the last 7 days. List the most significant posts and retweets of the week with the tweet URL and date. These are startup/product ecosystem voices (@garrytan = President & CEO of Y Combinator; @nikitabier = consumer product builder and growth expert; @TimHaldorsson = crypto marketing/activation campaigns and podcast host; @gregisenberg = startup founder and product/growth voice). Cover startup strategy, product-building insight, consumer app trends, YC ecosystem news, hiring/talent takes, AI-product commentary, and crypto activation campaigns or podcast appearances. Highlight threads or substantive takes."
 ```
 > `@garrytan` = Garry Tan (President & CEO, Y Combinator). `@nikitabier` = Nikita Bier (consumer product builder — TBH, Gas — and growth/product-craft voice). `@TimHaldorsson` = Tim Haldorsson (CMO @turtledotxyz, founder @LunarStrategy — crypto marketing/activation campaigns, podcast host). Added 2026-08-06. `@gregisenberg` was added 2026-10-15 at Mattia's request. Keep under 10 handles.
 > **To add more startup voices:** append handles here and to the `allowed_x_handles` array. Keep under 10 handles.
 
 ### Query 18 — Crypto Research Analysts (X) → feeds §16.1 Crypto Research
 
-Crypto-native research firms and analysts — fundamental valuation work, protocol revenue analysis, and token theses. The crypto counterpart to Query 14: **Query 18 feeds §16.1, Query 14 feeds §16.2.** Uses a **7-DAY window** (`from_date = date -v-7d`), like Query 14 — this cohort publishes reflective research on a weekly rhythm, not 24h news. No topic filter — capture substantive posts, threads, and research; the assembler picks the few that matter. Cross-day dedup applies.
+Crypto-native research firms and analysts — fundamental valuation work, protocol revenue analysis, and token theses. The crypto counterpart to Query 14: **Query 18 feeds §16.1, Query 14 feeds §16.2.** Uses the standard **7-day window** (`from_date = date -v-7d`), like every query in the weekly report — this cohort publishes reflective research on a weekly rhythm. No topic filter — capture substantive posts, threads, and research; the assembler picks the ones that matter. Cross-week dedup applies.
 
 ```
 Accounts: RyanWatkins_, syncracycapital, jon_charb, dba_xyz, Bober_smart
@@ -230,7 +244,7 @@ Prompt: "Search X for all recent posts and retweets from @RyanWatkins_, @syncrac
 > **Handle casing verified 2026-08-24** — all five resolve. The firm accounts (`@syncracycapital`, `@dba_xyz`) post infrequently: surface when active, skip silently when quiet — the same convention as `@dan_pantera` and `@1confirmation`. On the 2026-08-24 verification run, `@Bober_smart` produced only short replies; if it stays reply-only across several runs, consider dropping it.
 > **To add more crypto research voices:** append handles here and to the `allowed_x_handles` array. Keep under 10 handles.
 
-> **Note:** The former "Query 14 — AI Future" (frontier labs / @AnthropicAI) was removed 2026-06-13; AI coverage is scoped to NEAR AI + Venice in Query 4 only. Query 14 was re-added 2026-06-20 as Research / Markets Analysts (feeds §16.2; expanded 2026-08-24 with Bilello, Sonders, MacroAlf, Alden); Query 15 (Institutions/TradFi, feeds §7) added 2026-06-20; Query 16 (Robinhood Chain, feeds §4) added 2026-07-09; Query 17 (Startups, feeds §18) added 2026-07-12; Query 18 (Crypto Research Analysts, feeds §16.1) added 2026-08-24. There are now **19 GrokSearch queries (0–18)** — all use a 1-day window EXCEPT Queries 14 and 18 (the two research queries), which use a 7-day window.
+> **Note:** The former "Query 14 — AI Future" (frontier labs / @AnthropicAI) was removed 2026-06-13; AI coverage is scoped to NEAR AI + Venice in Query 4 only. Query 14 was re-added 2026-06-20 as Research / Markets Analysts (feeds §16.2; expanded 2026-08-24 with Bilello, Sonders, MacroAlf, Alden); Query 15 (Institutions/TradFi, feeds §7) added 2026-06-20; Query 16 (Robinhood Chain, feeds §4) added 2026-07-09; Query 17 (Startups, feeds §18) added 2026-07-12; Query 18 (Crypto Research Analysts, feeds §16.1) added 2026-08-24. There are now **19 GrokSearch queries (0–18)**. Since the switch to a weekly report (2026-10-31), **all of them use the 7-day window**; before that, all used a 1-day window except Queries 14 and 18.
 
 > **Design notes:**
 > - Query 0 captures the 10 highest-signal individuals (no topic filter) — their threads/takes get sorted into sections during assembly
@@ -250,7 +264,7 @@ For each query, use the GrokSearch curl pattern:
 
 ```bash
 set -a; [ -f "$HOME/.claude/.env" ] && . "$HOME/.claude/.env"; set +a
-FROM_DATE=$(date -v-1d +%Y-%m-%d 2>/dev/null || date -d "1 day ago" +%Y-%m-%d)
+FROM_DATE=$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d "7 days ago" +%Y-%m-%d)
 TO_DATE=$(date +%Y-%m-%d)
 
 curl -s -X POST https://api.x.ai/v1/responses \
@@ -263,7 +277,7 @@ curl -s -X POST https://api.x.ai/v1/responses \
   }'
 ```
 
-Run ALL 19 queries (0–18) in parallel (separate Bash calls). **All queries use the 1-day window** (`FROM_DATE = date -v-1d`) **EXCEPT Queries 14 and 18** (the two research queries), which use a 7-day window (`FROM_DATE = date -v-7d`) — set their `FROM_DATE` separately in their Bash calls.
+Run ALL 19 queries (0–18) in parallel (separate Bash calls). **All queries use the same 7-day window** (`FROM_DATE = date -v-7d`, `TO_DATE` = today).
 
 > **Verify each query returned content.** A curl that times out writes a 0-byte file and `jq` then yields empty output that is indistinguishable from "no posts found" — on 2026-08-24, three queries failed this way and needed a retry. After the parallel run, check every response file is non-empty (`wc -c`) and retry any that came back at 0 bytes with `--max-time 90` before assembling. Do not report a silently-failed query as a quiet account.
 
@@ -283,19 +297,19 @@ echo "$RESPONSE" | jq -r '[.output[] | select(.type == "message") | .content[] |
 
 ### Curated News Sites (WebFetch)
 
-Fetch today's headlines from each. Extract: title, date, 1-line summary.
+Fetch the week's headlines from each. Extract: title, date, 1-line summary.
 
-**Date filtering (CRITICAL):** Only include articles published TODAY or within the last 24 hours. Check the article date — if it's older than yesterday, SKIP it. News site homepages show articles from the past 3-5 days; you must filter down to fresh content only.
+**Date filtering (CRITICAL):** Only include articles published within the reporting window (the last 7 days, `FROM_DATE` to `TO_DATE`). Check the article date — if it's older than 7 days, SKIP it. Homepages only show the past 3-5 days, so also fetch each site's listing page below (page through it until you reach articles older than 7 days). If a listing doesn't reach back a full week, fill the gap with one WebSearch per site (`site:<domain> crypto` for the past week).
 
-| Source | URL |
-|--------|-----|
-| Unchained Crypto | https://unchainedcrypto.com/ |
-| DL News | https://www.dlnews.com/ |
-| Bankless | https://www.bankless.com/ |
+| Source | Homepage | Week listing |
+|--------|----------|--------------|
+| Unchained Crypto | https://unchainedcrypto.com/ | https://unchainedcrypto.com/news/ (dated list) |
+| DL News | https://www.dlnews.com/ | none readable without JavaScript: use WebSearch `site:dlnews.com` for the past week |
+| Bankless | https://www.bankless.com/ | https://www.bankless.com/read |
 
 ### Research Sources
 
-Fetch the latest research publications. Extract: title, date, author(s), and 1-line summary. **Freshness filter:** these publish weekly (Yardeni more often) — surface items from the last 7 days. If nothing new since the prior report, skip.
+Fetch the latest research publications. Extract: title, date, author(s), and 1-line summary. **Freshness filter:** these publish weekly (Yardeni more often) — surface items from the last 7 days. If nothing new since the previous report, skip.
 
 **Two fetch methods (sources are tagged below):**
 
@@ -330,34 +344,41 @@ The **Stream** column routes each source to its subsection in §16: `crypto` →
 
 ### Web Searches (WebSearch)
 
-Fill gaps that X doesn't cover well:
+Fill gaps that X doesn't cover well. Six searches (doubled from three for the weekly report), each limited to the past 7 days:
 
 | # | Query |
 |---|-------|
-| 1 | institutional crypto TradFi partnerships ETF [current month year] |
-| 2 | crypto regulation stablecoin legislation policy [current month year] |
-| 3 | RWA tokenization stablecoin market cap AUM changes [current month year] |
+| 1 | institutional crypto TradFi partnerships ETF [this week, month year] |
+| 2 | crypto regulation stablecoin legislation policy [this week, month year] |
+| 3 | RWA tokenization stablecoin market cap AUM changes [this week, month year] |
+| 4 | crypto week in review biggest stories [FROM_DATE to TO_DATE] |
+| 5 | crypto venture funding rounds raises acquisitions [this week, month year] |
+| 6 | tokenized stocks perps prediction markets launches [this week, month year] |
 
 ### Market Snapshot Prices (for Section 0)
 
-Fetch live prices for the top-of-report snapshot. Run alongside the other Phase 2 calls.
+Fetch prices for the top-of-report snapshot, with the **7-day change** (the weekly report compares with one week earlier). Run alongside the other Phase 2 calls.
 
-- **BTC + ETH** (price + 1d %): CoinGecko (one call returns both price and 24h change):
+- **BTC + ETH** (price + 7d %): CoinGecko `coins/markets` returns both in one unauthenticated call:
   ```bash
-  curl -s "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true" | jq .
+  curl -s "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&price_change_percentage=7d" \
+    | jq '.[] | {id, current_price, price_change_percentage_7d_in_currency}'
   ```
-- **SPX (S&P 500)** (price + 1d %): Yahoo Finance `^GSPC`. Compute 1d % from `regularMarketPrice` vs `previousClose`:
+- **SPX (S&P 500)** (latest close + 7d %): Yahoo Finance `^GSPC` daily bars. On a Saturday the latest close is Friday's; compare it with the last close at least 7 days before the run (the previous Friday):
   ```bash
-  curl -s -H "User-Agent: Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC" \
-    | jq '.chart.result[0].meta | {regularMarketPrice, previousClose}'
+  CUTOFF=$(date -v-7d +%s 2>/dev/null || date -d "7 days ago" +%s)
+  curl -s -H "User-Agent: Mozilla/5.0" "https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=1mo&interval=1d" \
+    | jq --argjson cutoff "$CUTOFF" '.chart.result[0] | [.timestamp, .indicators.quote[0].close] | transpose
+        | map(select(.[1] != null)) | {last: .[-1][1], base: (map(select(.[0] <= $cutoff)) | .[-1][1])}
+        | . + {pct7d: ((.last - .base) / .base * 100)}'
   ```
-  SPX 1d % = (regularMarketPrice − previousClose) / previousClose × 100.
+  SPX 7d % = (last − base) / base × 100.
 
-> **Source rationale:** CoinGecko for crypto (returns price + 24h change in one unauthenticated call; preferred over DefiLlama here, which needs a second endpoint for the delta). Yahoo Finance for SPX (TradFi index — outside crypto APIs). If CoinGecko rate-limits, fall back to DefiLlama (`https://coins.llama.fi/prices/current/coingecko:bitcoin,coingecko:ethereum`); if Yahoo fails, fall back to a web search for the S&P 500 level + daily change.
+> **Source rationale:** CoinGecko for crypto (returns price + 7d change in one unauthenticated call; preferred over DefiLlama here, which needs a second endpoint for the delta). Yahoo Finance for SPX (TradFi index — outside crypto APIs). If CoinGecko rate-limits, fall back to DefiLlama (`https://coins.llama.fi/prices/current/coingecko:bitcoin,coingecko:ethereum` for the price and `https://coins.llama.fi/percentage/coingecko:bitcoin,coingecko:ethereum?period=1w` for the 7-day change); if Yahoo fails, fall back to a web search for the S&P 500 weekly close and weekly change.
 
 ### Podcasts (WebFetch show pages — for Section 15)
 
-Fetch each tracked show's page (run in parallel with the other Phase 2 calls). For each, extract the show name, host, and the latest episodes with titles, dates, durations, and guest names. **Freshness filter:** surface only episodes published in the last ~24–48h (since the prior report). If a show has no new episode, skip it — do not list stale episodes just to fill the section. **Participants and relevance score are PER EPISODE** (hosts + that episode's guests; relevance 1-10 of the episode's topic to Mattia's intel needs) — never a single score for the whole show.
+Fetch each tracked show's page (run in parallel with the other Phase 2 calls). For each, extract the show name, host, and the latest episodes with titles, dates, durations, and guest names. **Freshness filter:** surface only episodes published in the last 7 days (since the previous report). If a show has no new episode, skip it — do not list stale episodes just to fill the section. **Participants and relevance score are PER EPISODE** (hosts + that episode's guests; relevance 1-10 of the episode's topic to Mattia's intel needs) — never a single score for the whole show.
 
 | # | Show | Host(s) | URL |
 |---|------|---------|-----|
@@ -374,7 +395,7 @@ Fetch each tracked show's page (run in parallel with the other Phase 2 calls). F
 >
 > **Coverage note:** Empire is crypto-native (Blockworks). How I AI (Claire Vo) and SVPG Videos (Marty Cagan) are AI/product-management sources for Mattia's PM lens — surface fresh episodes/videos on the normal freshness bar regardless of whether they touch crypto. Their topic does NOT need a crypto angle; AI and product-strategy content is in scope on its own merits. Apply the per-episode relevance score to Mattia's broader product/AI/crypto intel needs (not crypto alone).
 >
-> **SVPG is NOT a Spotify podcast** — it's a video webpage that has returned HTTP 403 to WebFetch. If the fetch fails, skip it silently (do not warn in the report); if it succeeds, treat the latest videos like episodes (title, date, ~relevance) and apply the same 24–48h freshness filter.
+> **SVPG is NOT a Spotify podcast** — it's a video webpage that has returned HTTP 403 to WebFetch. If the fetch fails, skip it silently (do not warn in the report); if it succeeds, treat the latest videos like episodes (title, date, ~relevance) and apply the same 7-day freshness filter.
 >
 > **To add/remove shows:** edit the table above and the Section 15 list in the Report Structure.
 
@@ -384,11 +405,11 @@ Fetch each tracked show's page (run in parallel with the other Phase 2 calls). F
 
 ### Report Structure (sections)
 
-0. **Market Snapshot** — pinned at the very top. A small table with BTC, ETH, and SPX (S&P 500): each row is current price + 1d % change (🟢 up / 🔴 down). State the capture date and note crypto via CoinGecko, SPX via Yahoo Finance. Always include this section. See "Market Snapshot Prices" in Phase 2.
-1. **Top 5 Things That Matter Today** — 3-5 highest-signal items across ALL sources
+0. **Market Snapshot** — pinned at the very top. A small table with BTC, ETH, and SPX (S&P 500): each row is current price (SPX: latest close) + **7d % change** (🟢 up / 🔴 down). State the capture date and note crypto via CoinGecko, SPX via Yahoo Finance. Always include this section. See "Market Snapshot Prices" in Phase 2.
+1. **Top 10 Things That Matter This Week** — 6-10 highest-signal items of the week across ALL sources. Format each as a numbered line starting `**1. Headline**` (the site's card preview uses the first one), then 1-3 sentences and links.
 2. **Ethereum** — Core protocol, ecosystem/strategic, applications/protocols
 3. **Solana** — Core protocol, ecosystem/strategic, applications/protocols
-4. **Robinhood Chain** — Robinhood's Arbitrum Orbit L2, USDG stablecoin, tokenized stocks on Robinhood, chain metrics (volume, TVL, inflows), Uniswap activity, and strategic moves from leadership (@JohannKerbrat, @vladtenev, @RobinhoodCrypto). Fed by GrokSearch Query 16. This is a standalone section because Robinhood Chain's combination of 27M retail users + L2 infrastructure + tokenized stocks + USDG makes it a category-defining ecosystem worth daily tracking, not just another L2 in "Other Chains."
+4. **Robinhood Chain** — Robinhood's Arbitrum Orbit L2, USDG stablecoin, tokenized stocks on Robinhood, chain metrics (volume, TVL, inflows), Uniswap activity, and strategic moves from leadership (@JohannKerbrat, @vladtenev, @RobinhoodCrypto). Fed by GrokSearch Query 16. This is a standalone section because Robinhood Chain's combination of 27M retail users + L2 infrastructure + tokenized stocks + USDG makes it a category-defining ecosystem worth tracking every week, not just another L2 in "Other Chains."
 5. **Other Chains** (selective) — Hyperliquid, Arbitrum, Base, Monad, MegaETH, ZKsync, Tempo, Plume, Ondo. Only if meaningful.
 6. **AI — NEAR AI, Venice & Arena** — Scoped to three AI players: NEAR AI (decentralized/user-owned AI, agent vision; @near_ai, @ILBlackDragon), Venice (private/uncensored AI, $VVV; @AskVenice, @ErikVoorhees), and Arena.ai (formerly LMArena — model evaluation/leaderboards, Agent Mode benchmarking; @arena — no crypto angle required, leaderboard shifts and new-model entries are in scope on their own merits). No generic onchain-agent or frontier-lab coverage beyond these. Skip if nothing substantive.
 7. **Institutions / TradFi** — Partnerships, ETFs, custody, institutional DeFi, RWA products
@@ -400,17 +421,17 @@ Fetch each tracked show's page (run in parallel with the other Phase 2 calls). F
 13. **Regulation / Policy** — Only items with direct product implications
 14. **Hidden Gems** — Noteworthy posts from @CharlieStLouis, @ivangbi_, @kassandraETH, @gametheorizing, @thiccyth0t, @antonttc, @borjaneira_. Show what they posted that's smart/insightful. Skip if nothing substantive. No need to force items.
 15. **Whales & Farmers** — What @burstingbagel, @Cbb0fe, @PendleIntern, @phtevenstrong, @JustDeauIt are doing/saying. Yield strategies, position moves, protocol alpha, market observations. Skip if nothing substantive.
-16. **Research** — Latest publications from tracked research firms + markets analysts, on a **7-day freshness window** (research is weekly/reflective, not daily news). Split into two subsections:
+16. **Research** — Latest publications from tracked research firms + markets analysts, on the report's **7-day window** (research is weekly/reflective). Split into two subsections:
 
     - **16.1 Crypto Research** — research whose subject is crypto: on-chain analytics, BTC/ETH market structure, ETF flows, crypto volatility and positioning, token theses and protocol revenue/valuation analysis, digital-asset institutional adoption. Default sources: K33, Glassnode, Coinbase Institutional (web) + @RyanWatkins_, @syncracycapital, @jon_charb, @dba_xyz, @Bober_smart (GrokSearch **Query 18**).
     - **16.2 General Market Research** — macro, rates, equities, and cross-asset research. Default sources: Yardeni, The Grumpy Economist (Cochrane), BlackRock, JPMorgan (web) + @citrini, @QuantData, @charliebilello, @LizAnnSonders, @MacroAlf, @LynAldenContact, @RaoulGMI (GrokSearch **Query 14**). Query 14 is now high-volume — see its volume warning; group each analyst into one entry rather than listing every chart.
 
     **Route by content, not by source.** The Stream tags in the Phase 2 table are defaults for where a source *usually* lands, but each individual item goes where its subject belongs. A macro source writing about crypto goes in 16.1; a crypto source writing about rates or equities goes in 16.2. This matters most for the X analysts from Queries 14 and 18, who mix freely: @QuantData's IBIT options volume and MSTR unrealized-P&L posts belong in **16.1** despite Query 14 being the general feed, while a Query 18 analyst writing about Fed policy or equity multiples belongs in **16.2**. Split a single account's posts across both subsections whenever the content calls for it — never file a whole account under one heading out of convenience.
 
-    Each item: title/post, date, key thesis, why-it-matters. Cross-reference to other report sections where the research supports or challenges the day's signal — and cross-reference *between* the two subsections when macro and crypto research tell the same story (e.g. BlackRock's higher-cost-of-capital thesis against crypto's ETF-flow recovery). When both subsections have content, close §16 with a short **"Where the two streams meet"** paragraph naming the agreement or the divergence between them — that synthesis is the point of splitting the section. Skip anything already surfaced in a prior report; skip either subsection, or the whole section, if nothing new.
+    Each item: title/post, date, key thesis, why-it-matters. Cross-reference to other report sections where the research supports or challenges the week's signal — and cross-reference *between* the two subsections when macro and crypto research tell the same story (e.g. BlackRock's higher-cost-of-capital thesis against crypto's ETF-flow recovery). When both subsections have content, close §16 with a short **"Where the two streams meet"** paragraph naming the agreement or the divergence between them — that synthesis is the point of splitting the section. Skip anything already surfaced in the previous report; skip either subsection, or the whole section, if nothing new.
 
     > Split into 16.1/16.2 on 2026-08-24 (was a single Research section divided by *source type* — web vs. X — which buried crypto research among macro. Now divided by *subject*, so the crypto stream is scannable on its own and the macro stream can be read as backdrop).
-17. **Podcasts** — New episodes (last ~24–48h) from tracked crypto/DeFi/macro shows: Unchained, The Edge, The Rollup, Bankless, Bits + Bips, Empire. Plus AI/product-management sources for the PM lens — How I AI (Claire Vo), SVPG Videos (Marty Cagan) — surfaced on the normal freshness bar regardless of crypto relevance (AI and product-strategy topics are in scope on their own merits). **Score and attribute PER EPISODE, not per show.** Each episode: title (date, duration); **Participants** (hosts + guest names for that episode); **Relevance: X/10** (relevance of *that episode's topic* to Mattia's daily crypto/DeFi/AI-x-crypto product intel — a heavy-hitter show can drop a low-relevance episode and vice versa); 1-line summary; and a why-it-matters / cross-reference to other report items. Link the Spotify show URL. Skip shows with no fresh episode; skip the whole section if nothing new. See "Podcasts" in Phase 2.
+17. **Podcasts** — New episodes (last 7 days) from tracked crypto/DeFi/macro shows: Unchained, The Edge, The Rollup, Bankless, Bits + Bips, Empire. Plus AI/product-management sources for the PM lens — How I AI (Claire Vo), SVPG Videos (Marty Cagan) — surfaced on the normal freshness bar regardless of crypto relevance (AI and product-strategy topics are in scope on their own merits). **Score and attribute PER EPISODE, not per show.** Each episode: title (date, duration); **Participants** (hosts + guest names for that episode); **Relevance: X/10** (relevance of *that episode's topic* to Mattia's crypto/DeFi/AI-x-crypto product intel — a heavy-hitter show can drop a low-relevance episode and vice versa); 1-line summary; and a why-it-matters / cross-reference to other report items. Link the Spotify show URL. Skip shows with no fresh episode; skip the whole section if nothing new. See "Podcasts" in Phase 2.
 18. **Startups** — What @garrytan (President & CEO, Y Combinator), @nikitabier (consumer product builder — TBH, Gas), @TimHaldorsson (crypto marketing/activation campaigns, podcast host), and @gregisenberg (startup founder, CEO of Late Checkout, startup/product/growth voice) are posting. Fed by GrokSearch Query 17. Startup strategy, product craft, consumer app trends, YC ecosystem, AI-product commentary, crypto activation campaigns — no crypto angle required for garrytan/nikitabier (this feeds Mattia's PM lens directly, like the How I AI / SVPG podcast sources). Prefer threads and substantive takes over one-liners; skip if nothing substantive. Cross-reference to Product Implications where a take applies to crypto product work.
 19. **Product Implications** (ALWAYS LAST) — Roadmap impact, competitor moves, what to test/avoid, open questions. This section closes the report, after Startups.
 
@@ -419,53 +440,68 @@ Fetch each tracked show's page (run in parallel with the other Phase 2 calls). F
 ```markdown
 **[Section] Headline**
 - What happened: ...
+- When: YYYY-MM-DD (the day it happened within the week)
 - Why it matters: ...
 - Who it impacts: ...
 - Link: ...
 ```
 
-### Cross-Day Dedup (CRITICAL — run before assembly)
+### Cross-Week Dedup (CRITICAL — run before assembly)
 
-Before assembling, read yesterday's report at:
+Before assembling, read the previous report: the most recent report in the folder dated before today (normally last Saturday's weekly report):
+```bash
+ls ~/Documents/personal-knowledge-vault/raw/reports/crypto/????-??-??.md | awk -v today="$(date +%Y-%m-%d)" -F/ '{ f=$NF; sub(/\.md$/,"",f); if (f < today) print }' | sort | tail -1
 ```
-~/Documents/personal-knowledge-vault/raw/reports/crypto/$(date -v-1d +%Y-%m-%d 2>/dev/null || date -d "1 day ago" +%Y-%m-%d).md
-```
 
-Any story already covered in yesterday's report must be **EXCLUDED** unless there is a **material new development** — meaning new data, a new official reaction, a status change, or a significant escalation. "Same story, same facts, different source" is NOT a new development. If a story was yesterday's #1 and nothing changed, it does not appear today.
+Any story already covered in the previous report must be **EXCLUDED** unless there is a **material new development** during this week — meaning new data, a new official reaction, a status change, or a significant escalation. "Same story, same facts, different source" is NOT a new development. If a story was last week's #1 and nothing changed, it does not appear this week.
 
-### Thin-Signal Handling (weekends & holidays)
+Within the week, merge a story that developed over several days into one item (latest status first, key dates in "When"), rather than listing each day separately.
 
-If fewer than 8 unique new items survive cross-day dedup:
-- Produce a shorter **"Low Activity Edition"** header: `# Daily Crypto Market Report — [DATE] (Low Activity Edition)`
-- Reduce Top 5 to however many genuinely new items exist (could be 1-3)
+### Thin-Signal Handling (quiet weeks & holidays)
+
+If fewer than 16 unique new items survive cross-week dedup:
+- Produce a shorter **"Low Activity Edition"** header: `# Weekly Crypto Market Report — [DATE] (Low Activity Edition)`
+- Reduce the Top 10 to however many genuinely new items exist (could be 2-6)
 - Skip sections entirely rather than filling with stale content
-- Add a brief note: *"Light signal day — fewer tracked accounts active."*
+- Add a brief note: *"Light signal week — fewer tracked accounts active."*
 
 ### Assembly Rules
 
 - **Skip empty sections** — no padding
-- **Target:** 10-15 items total, 3-5 must-know in Top 5
+- **Target:** 20-30 items total (double the old daily 10-15), 6-10 must-know in the Top 10
+- **Section caps (up to 10 items per section in the weekly report).** Caps are ceilings, not quotas: fill them only with distinct, material items from the week, and never pad.
+
+  | Section | Old daily | Weekly cap |
+  |---------|-----------|------------|
+  | 1. Top list | Top 5 (3-5 items) | **Top 10 (6-10 items)** |
+  | 2-13. Each news section (Ethereum … Regulation) | up to 3 | **up to 10** |
+  | 14. Hidden Gems, 15. Whales & Farmers | up to 3 each | **up to 10 each** |
+  | 16.1 Crypto Research, 16.2 General Market Research | about 3 each | **up to 10 each** |
+  | 17. Podcasts | fresh episodes only | **up to 10 episodes**, highest relevance first |
+  | 18. Startups | up to 3 | **up to 10** |
+  | 19. Product Implications | 1 point per heading | **up to 2 points per heading** |
 - **Highlight threads/articles** with high engagement — mark with special callout, these are the most valuable
 - **Cross-reference** X signals with news site headlines to validate and enrich
 - **Product Implications** must include: roadmap impact, competitor moves, what to test, what to avoid, open questions
 - **Dedup** items that appear in multiple queries (e.g., same event from global signal + specialized query)
-- **Cross-day dedup** — exclude items already in yesterday's report (see above)
+- **Cross-week dedup** — exclude items already in the previous report (see above)
 
 ### Report Header + Market Snapshot (Section 0)
 
 ```markdown
-# Daily Crypto Market Report — [DATE]
+# Weekly Crypto Market Report — [DATE]
 
 **Generated:** YYYY-MM-DD
+**Period:** YYYY-MM-DD → YYYY-MM-DD (previous 7 days)
 **Sources:** GrokSearch (19 queries), Unchained Crypto, DL News, Bankless, Web Search, CoinGecko, Yahoo Finance
 
 ---
 
 ## 0. Market Snapshot
 
-*Prices captured YYYY-MM-DD. Crypto via CoinGecko; SPX via Yahoo Finance (^GSPC).*
+*Prices captured YYYY-MM-DD. Crypto via CoinGecko; SPX via Yahoo Finance (^GSPC), latest close vs the close one week earlier.*
 
-| Asset | Price | 1d % |
+| Asset | Price | 7d % |
 |-------|-------|------|
 | **BTC** | $XX,XXX | 🟢 +X.XX% |
 | **ETH** | $X,XXX | 🟢 +X.XX% |
@@ -529,7 +565,10 @@ open "https://bearlusconi-bera.github.io/crypto-reports/"
 Before declaring done:
 - [ ] All non-empty sections populated
 - [ ] Each item follows the per-item template
-- [ ] Top 5 section has 3-5 items
+- [ ] Top 10 section has 6-10 items (fewer only in a Low Activity Edition)
+- [ ] Header has the `**Period:**` line; every item falls inside that 7-day window
+- [ ] Market snapshot shows 7d % (not 1d %)
+- [ ] No section exceeds its weekly cap
 - [ ] High-engagement threads/articles highlighted
 - [ ] Product Implications has actionable takeaways
 - [ ] Links are real (from GrokSearch citations + news sites)
